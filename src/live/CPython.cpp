@@ -205,14 +205,20 @@ void *CPython::PyImport_GetModuleDict( )
 
 void CPython::AddPythonFunction( void *module, const char *name, void *callback, const char *doc )
 {
-    PyMethodDef *def = new PyMethodDef;
+    // PyCFunction_New keeps a reference to this PyMethodDef for the lifetime of the
+    // resulting callable (it does not copy it), so these must live as long as the
+    // process/module does. A static container with stable references replaces the
+    // previous unmanaged `new PyMethodDef` (no matching delete, and no way to reclaim it).
+    static std::deque< PyMethodDef > s_MethodDefs;
 
-    def->ml_name  = name;
-    def->ml_meth  = callback;
-    def->ml_flags = 0x0001; // METH_VARARGS
-    def->ml_doc   = doc;
+    PyMethodDef &def = s_MethodDefs.emplace_back( );
 
-    void *func = PyCFunction_New( def, nullptr );
+    def.ml_name  = name;
+    def.ml_meth  = callback;
+    def.ml_flags = 0x0001; // METH_VARARGS
+    def.ml_doc   = doc;
+
+    void *func = PyCFunction_New( &def, nullptr );
 
     if ( func )
     {
@@ -256,7 +262,7 @@ int CPython::PyObject_IsTrue( void *obj )
     return Resolve< FN >( "PyObject_IsTrue" )( obj );
 }
 
-void* CPython::PyObject_CallMethodNoArgs( void *self, const char *name )
+void *CPython::PyObject_CallMethodNoArgs( void *self, const char *name )
 {
     using FN = void *( __cdecl * ) ( void *, const char * );
 
@@ -279,7 +285,6 @@ void *CPython::CallStatic( const char *moduleName, const char *objectName, const
 
     return GetPython( )->PyObject_CallObject( function, nullptr );
 }
-
 
 void *CPython::is_midi_preview( void *self, void *args )
 {

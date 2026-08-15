@@ -9,7 +9,7 @@ bool CWindow::IsKeyDown( uint8_t iKey )
 
 bool CWindow::IsKeyReleased( uint8_t iKey )
 {
-    static bool bPressed[ 0xFF ];
+    static bool bPressed[ 256 ]; // indexed by uint8_t (0-255); was 0xFF, one short
     if ( !m_bKeyTable[ iKey ] )
     {
         if ( bPressed[ iKey ] )
@@ -23,7 +23,7 @@ bool CWindow::IsKeyReleased( uint8_t iKey )
 
 bool CWindow::IsKeyPressed( uint8_t iKey )
 {
-    static bool bPressed[ 0xFF ];
+    static bool bPressed[ 256 ]; // indexed by uint8_t (0-255); was 0xFF, one short
     if ( m_bKeyTable[ iKey ] )
     {
         if ( !bPressed[ iKey ] )
@@ -105,9 +105,16 @@ LRESULT WINAPI CWindow::GUI_WndProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
     if ( GetWindow( )->IsKeyPressed( 0x35 ) )
     {
+        // These calls end up in raw CPython C-API calls (CLive -> CPython::CallStatic /
+        // PyObject_* ). This runs on the window-procedure thread, which does not hold the
+        // GIL, so it must be acquired explicitly before touching the interpreter.
+        void *gil = GetPython( )->PyGILState_Ensure( );
+
         printf( "GetApplication: 0x%p\n", GetLive( )->GetApplication( ) );
         printf( "GetDocument: 0x%p\n", GetLive( )->GetDocument( ) );
         printf( "IsPlaying: %s\n", GetLive( )->IsPlaying( ) ? "true" : "false" );
+
+        GetPython( )->PyGILState_Release( gil );
     }
 
     return CallWindowProcA( GetWindow( )->m_WndProc, hwnd, uMsg, wParam, lParam );
@@ -301,6 +308,9 @@ bool CWindow::IsSelectedTrack( uint64_t TrackHandle )
 
     auto Track = reinterpret_cast< TPyHandle< ATrack > * >( TrackHandle );
 
+    if ( !Track )
+        return result;
+
     auto *SelectedTrack = Track->Object;
 
     if ( !SelectedTrack )
@@ -376,37 +386,37 @@ void CWindow::OnInit( )
     m_bInit   = true;
 
     {
-        GetPython()->Py_Initialize( );
+        GetPython( )->Py_Initialize( );
         const char *moduleName = "cpp";
         void       *state      = GetPython( )->PyGILState_Ensure( );
         void       *cpp        = GetPython( )->PyModule_New( moduleName );
 
-     if ( cpp )
-     {
-         GetPython( )->AddPythonFunction( cpp, "is_midi_preview", GetPython( )->is_midi_preview, "Check if MIDI Preview is enabled" );
-         GetPython( )->AddPythonFunction( cpp, "send_midi_preview", GetPython( )->send_midi_preview, "Send MIDI Preview" );
-         GetPython( )->AddPythonFunction( cpp, "is_key_released", GetPython( )->is_key_released, "Verify if this key is released" );
-         GetPython( )->AddPythonFunction( cpp, "is_key_pressed", GetPython( )->is_key_pressed, "Verify if this key is pressed" );
-         GetPython( )->AddPythonFunction( cpp, "is_key_down", GetPython( )->is_key_down, "Verify if this key is down" );
-         GetPython( )->AddPythonFunction( cpp, "get_detail_clip", GetPython( )->get_detail_clip, "getting detail clip" );
-         GetPython( )->AddPythonFunction( cpp, "is_selected_track", GetPython( )->is_selected_track, "if the track is selected" );
-         GetPython( )->AddPythonFunction( cpp, "time_selection_start_time", GetPython( )->time_selection_start_time,
-                                          "time_selection_start_time" );
-         GetPython( )->AddPythonFunction( cpp, "time_selection_end_time", GetPython( )->time_selection_end_time,
-                                          "time_selection_end_time" );
+        if ( cpp )
+        {
+            GetPython( )->AddPythonFunction( cpp, "is_midi_preview", GetPython( )->is_midi_preview, "Check if MIDI Preview is enabled" );
+            GetPython( )->AddPythonFunction( cpp, "send_midi_preview", GetPython( )->send_midi_preview, "Send MIDI Preview" );
+            GetPython( )->AddPythonFunction( cpp, "is_key_released", GetPython( )->is_key_released, "Verify if this key is released" );
+            GetPython( )->AddPythonFunction( cpp, "is_key_pressed", GetPython( )->is_key_pressed, "Verify if this key is pressed" );
+            GetPython( )->AddPythonFunction( cpp, "is_key_down", GetPython( )->is_key_down, "Verify if this key is down" );
+            GetPython( )->AddPythonFunction( cpp, "get_detail_clip", GetPython( )->get_detail_clip, "getting detail clip" );
+            GetPython( )->AddPythonFunction( cpp, "is_selected_track", GetPython( )->is_selected_track, "if the track is selected" );
+            GetPython( )->AddPythonFunction( cpp, "time_selection_start_time", GetPython( )->time_selection_start_time,
+                                             "time_selection_start_time" );
+            GetPython( )->AddPythonFunction( cpp, "time_selection_end_time", GetPython( )->time_selection_end_time,
+                                             "time_selection_end_time" );
 
-     void *modules = GetPython( )->PyImport_GetModuleDict( );
+            void *modules = GetPython( )->PyImport_GetModuleDict( );
 
-     GetPython( )->PyDict_SetItemString( modules, moduleName, cpp );
-     }
+            GetPython( )->PyDict_SetItemString( modules, moduleName, cpp );
+        }
 
-     GetPython( )->PyGILState_Release( state );
-     }
+        GetPython( )->PyGILState_Release( state );
+    }
 
-    //AllocConsole( );
-    //FILE *Dummy;
-    //freopen_s( &Dummy, "CONOUT$", "w", stdout );
-    //freopen_s( &Dummy, "CONIN$", "r", stdin );
+    // AllocConsole( );
+    // FILE *Dummy;
+    // freopen_s( &Dummy, "CONOUT$", "w", stdout );
+    // freopen_s( &Dummy, "CONIN$", "r", stdin );
 }
 
 CWindow *GetWindow( )
