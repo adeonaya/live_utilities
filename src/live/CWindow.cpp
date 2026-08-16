@@ -235,7 +235,7 @@ uint64_t CWindow::GetDetailClip( )
 {
     uint64_t result = 0;
 
-    auto *App = *( ALiveApp ** ) ( ( uint64_t ) GetModuleHandleA( LIVE_MODULE ) + 0x82B1980 );
+    auto *App = GetLive( )->GetApplication( );
 
     if ( !App )
         return result;
@@ -277,7 +277,7 @@ bool CWindow::GetMidiPreview( )
 {
     bool result = false;
 
-    auto *App = *( ALiveApp ** ) ( ( uint64_t ) GetModuleHandleA( LIVE_MODULE ) + 0x82B1980 );
+    auto *App = GetLive( )->GetApplication( );
 
     if ( !App )
         return result;
@@ -330,7 +330,7 @@ double CWindow::StartTime( )
 {
     double result = 0;
 
-    auto *App = *( ALiveApp ** ) ( ( uint64_t ) GetModuleHandleA( LIVE_MODULE ) + 0x82B1980 );
+    auto *App = GetLive( )->GetApplication( );
 
     if ( !App )
         return result;
@@ -354,7 +354,7 @@ double CWindow::EndTime( )
 {
     double result = 0;
 
-    auto *App = *( ALiveApp ** ) ( ( uint64_t ) GetModuleHandleA( LIVE_MODULE ) + 0x82B1980 );
+    auto *App = GetLive( )->GetApplication( );
 
     if ( !App )
         return result;
@@ -413,10 +413,28 @@ void CWindow::OnInit( )
         GetPython( )->PyGILState_Release( state );
     }
 
-    // AllocConsole( );
-    // FILE *Dummy;
-    // freopen_s( &Dummy, "CONOUT$", "w", stdout );
-    // freopen_s( &Dummy, "CONIN$", "r", stdin );
+    uint64_t ModuleBase = reinterpret_cast< uint64_t >( GetModuleHandleA( NULL ) );
+
+    const IMAGE_DOS_HEADER *DOSHeader = reinterpret_cast< IMAGE_DOS_HEADER * >( ModuleBase );
+
+    const IMAGE_NT_HEADERS *NtHeaders = reinterpret_cast< IMAGE_NT_HEADERS * >( ModuleBase + DOSHeader->e_lfanew );
+
+    const DWORD SizeOfImage = NtHeaders->OptionalHeader.SizeOfImage;
+
+    ALiveApp *App = nullptr;
+
+    while ( !App )
+    {
+        App = *( ALiveApp ** ) PatternScan< uint64_t >( "48 89 1D ? ? ? ? 48 83 C4 ? 41 5F", ModuleBase, SizeOfImage, true );
+        Sleep( 100 );
+    }
+
+    GetLive( )->SetApplication( App );
+
+    //AllocConsole( );
+    //FILE *Dummy;
+    //freopen_s( &Dummy, "CONOUT$", "w", stdout );
+    //freopen_s( &Dummy, "CONIN$", "r", stdin );
 }
 
 CWindow *GetWindow( )

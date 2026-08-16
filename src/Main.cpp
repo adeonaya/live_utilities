@@ -24,6 +24,3 @@ BOOL WINAPI DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved )
 
     return TRUE;
 }
-
-
-// SIG : 48 89 1D ? ? ? ? 48 83 C4 ? 41 5F

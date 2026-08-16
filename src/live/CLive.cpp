@@ -4,11 +4,6 @@ static CLive g_CLive { };
 
 using PyObject = void;
 
-void *CLive::GetApplication( )
-{
-    return GetPython()->CallStatic( "Live", "Application", "get_application" );
-}
-
 void *CLive::GetDocument( )
 {
     auto *Application = GetApplication( );
@@ -47,6 +42,16 @@ bool CLive::IsPlaying( )
     }
 
     return result == 1;
+}
+
+void CLive::SetApplication( ALiveApp* pApp )
+{
+    App = pApp;
+}
+
+ALiveApp *CLive::GetApplication( )
+{
+    return App;
 }
 
 CLive *GetLive( )

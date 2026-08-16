@@ -16,5 +16,6 @@
     <ClInclude Include="src\live\CWindow.h" />
     <ClInclude Include="src\live\CPython.h" />
     <ClInclude Include="src\live\CLive.h" />
+    <ClInclude Include="src\utilities\PatternScanner.h" />
   </ItemGroup>
 </Project>

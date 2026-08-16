@@ -49,7 +49,7 @@
 #include <playsoundapi.h>
 
 
-
+#include "utilities/PatternScanner.h"
 #include "live/Common.h"
 #include "live/CWindow.h"
 #include "live/CPython.h"

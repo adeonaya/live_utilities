@@ -140,11 +140,13 @@ class ALiveApp
 class CLive
 {
   public:
-    void *GetApplication( );
-    void *GetDocument( );
-    bool IsPlaying( );
+    void     *GetDocument( );
+    bool      IsPlaying( );
+    ALiveApp *GetApplication( );
+    void      SetApplication( ALiveApp *LiveApp_addr );
 
   private:
+    ALiveApp *App;
 };
 
 CLive *GetLive( );
